@@ -1,0 +1,269 @@
+\documentclass[pdftex,11pt]{article}
+\usepackage{fancyvrb}
+\usepackage{color}
+\usepackage[T1]{fontenc}
+\usepackage[light,math]{iwona}
+\usepackage{multicol}
+\usepackage{hyperref}
+
+\addtolength{\oddsidemargin}{-.875in}
+\addtolength{\evensidemargin}{-.875in}
+\addtolength{\textwidth}{1.75in}
+\addtolength{\topmargin}{-.75in}
+\addtolength{\textheight}{1.0in}
+\newcommand{\spacew}[1]{\underline{\hspace{#1}}}
+\setlength{\parindent}{0pt}
+
+\newcommand{\cons}{{\tt cons}\ }
+\newcommand{\car}{{\tt car}\ }
+\newcommand{\cdr}{{\tt cdr}\ }
+\newcommand{\lref}{{\tt list-ref}\ }
+
+\begin{document}
+
+\begin{center}
+  \Huge{CS3S Review 1}\\
+  \large Covers material through Quiz 4: Predicates
+\end{center}
+
+\DefineVerbatimEnvironment%
+  {scheme}{Verbatim}
+  {numbers=left,numbersep=5pt,
+   frame=lines,framerule=.2mm,framesep=8pt,commandchars=\\\{\}}
+
+\DefineVerbatimEnvironment%
+  {answer}{Verbatim}
+  {frame=single,framesep=8pt,framerule=.1mm,,commandchars=\\\{\}}
+
+\DefineVerbatimEnvironment%
+  {interaction}{Verbatim}
+  {framesep=8pt,framerule=.1mm,,commandchars=\\\{\}}
+
+\begin{enumerate}
+\item What will happen if the following is typed into Scheme?  Some of
+  these will be errors, so state what causes the error.
+\vspace{.02in}
+\renewcommand{\theenumii}{\Alph{enumii}}
+\renewcommand{\labelenumii}{\theenumii}
+
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define j 4)
+> (+ j 4)
+
+\underline{                    }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define ag 100)
+> (* ag ag)
+
+\underline{                    }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define ag 100)
+> (* ag 100)
+
+\underline{                    }
+\end{answer}
+\end{minipage}\\
+
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define (f 4)
+    (+ 4 f))
+
+\underline{                    }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define f 4 (+ f 4))
+> (f 4)
+
+\underline{                    }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define (f g)
+    (+ g 4))
+
+\underline{                    }
+\end{answer}
+\end{minipage}
+
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define (g a b)
+    (* a b))
+> (define (row a b)
+    (+ (g a a) (g b a)))
+> (row 10 20)
+
+\underline{                    }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define (foo be bo)
+    (list (list 'be be)
+          (list bo 'bo)))
+> (foo 'a 10)
+
+\underline{                    }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.32\textwidth}
+\begin{answer}
+> (define (f? n)
+    (if (= n 0) #t #f))
+> (f? 0)
+
+\underline{                    }
+\end{answer}
+\end{minipage}
+
+\item Write the necessary code to get {\tt '(2 3)} from the following
+  lists using only combinations of \car and \cdr. If it's not
+  possible, just say so.
+
+  \begin{itemize}
+  \item {\tt '(1 2 3)} \underline{\hspace{3in}}
+  \item {\tt '((2 3))} \underline{\hspace{3in}}
+  \item {\tt '((2 (3 4)))} \underline{\hspace{3in}}
+  \item {\tt '(1 2 3 4)} \underline{\hspace{3in}}
+  \item {\tt '((2) (3))} \underline{\hspace{3in}}
+  \item {\tt '((1) (2 3))} \underline{\hspace{3in}}
+  \end{itemize}
+
+\item Fill in the blanks with the necessary parentheses or list
+  operations to get the result {\tt '(Jim is an idiot)}.
+  \begin{itemize}
+  \item {\tt (\spacew{1in} 'Jim \spacew{.7in} is \spacew{.7in} '(an
+      idiot) \spacew{.7in})}
+  \item {\tt (\spacew{1in} '(Jim) \spacew{.7in} '(is an) \spacew{.7in}
+      'idiot \spacew{.7in})}
+  \item {\tt (\spacew{1in} '(Jim is) \spacew{1in} '(not an) \spacew{.7in}
+      '(idiot) \spacew{.7in})}
+  \end{itemize}
+
+\newpage
+
+\item Write out all the steps in the evaluation of the following
+  function call:
+\begin{answer}
+> (define (funcofmystery a b c)
+    (+ a (* b (+ a c))))
+> (funcofmystery (funcofmystery 10 20 30) 20 30)
+
+
+
+
+
+
+
+\end{answer}
+
+\item Show the output of the following snippets of code:
+
+\begin{minipage}{0.4\textwidth}
+\begin{answer}
+> 'hello
+
+\underline{                          }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.5\textwidth}
+\begin{answer}
+> (define greet '(hello there))
+> (append greet '(jim))
+
+\underline{                          }
+\end{answer}
+\end{minipage}
+
+\begin{minipage}{0.4\textwidth}
+\begin{answer}
+> '('yellow 'jello)
+
+\underline{                         }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.5\textwidth}
+\begin{answer}
+> (define jam (cons 'jim '(likes)))
+> (append jam '(peanut butter))
+
+\underline{                         }
+\end{answer}
+\end{minipage}
+
+\begin{minipage}{0.4\textwidth}
+\begin{answer}
+> (define (foo b)
+    (list b '(append b (food))))
+> (foo 'no)
+
+\underline{                         }
+\end{answer}
+\end{minipage}
+\hspace{.02in}
+\begin{minipage}{0.5\textwidth}
+\begin{answer}
+> (define greeting '(hello there))
+> (define greeting '(jim))
+> (append greeting greeting)
+
+\underline{                         }
+\end{answer}
+\end{minipage}
+
+\item Write a function that takes 2 numeric arguments and returns {\tt
+    \#t} when they are both greater than 0. Write this once using {\tt
+    if}, and once using {\tt cond}.
+\vspace{2in}
+
+\item Write a function that takes 3 arguments and returns the second
+  argument if the first argument is 0 and the third argument if the
+  first argument is 1. eg: {\tt (f 0 10 20) $\rightarrow$ 10, (f 1 10
+    20) $\rightarrow$ 20}
+\vspace{1in}
+
+\item Write a function that takes 4 arguments and returns {\tt \#t} if
+  each argument is the sum of the previous arguments: {\tt (f 1 1 2 3)
+    $\rightarrow$ \#t}, {\tt (f 1 1 2 99) $\rightarrow$ \#f} (because
+  99 is not the sum of 1 and 2) \vspace{1.25in}
+
+\item \label{q:guessme} Explain what the following function does:
+\begin{answer}
+(define (guessme alpha beta gamma)
+  (if (>= alpha 0)
+      (if (>= beta 0) (>= gamma 0) #f)
+      #f))
+\end{answer}
+\vspace{.5in}
+
+\item For what inputs does this function return {\tt \#t}?
+\begin{answer}
+(define (guessme2 alpha beta gamma)
+  (if (odd? alpha)
+      (if (odd? beta) (not (odd? gamma)) (odd? gamma))
+      (if (odd? beta) (odd? gamma) (not (odd? gamma)))))
+\end{answer}
+\vspace{.5in}
+
+\item Rewrite \#\ref{q:guessme} using only {\tt and}.
+\end{enumerate}
+\end{document}

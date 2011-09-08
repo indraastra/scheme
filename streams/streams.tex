@@ -1,0 +1,660 @@
+\documentclass[pdftex,11pt]{article}
+\usepackage{fancyvrb}
+\usepackage{color}
+\usepackage[T1]{fontenc}
+\usepackage[light,math]{iwona}
+\usepackage{multicol}
+\usepackage{hyperref}
+
+\addtolength{\oddsidemargin}{-.875in}
+\addtolength{\evensidemargin}{-.875in}
+\addtolength{\textwidth}{1.75in}
+\addtolength{\topmargin}{-.75in}
+\addtolength{\textheight}{1.0in}
+
+%\setlength{\parindent}{0pt}
+
+\author{Vishal Talwar}
+\title{Streams in Scheme\footnote{Material based on \S3.5 of SICP}}
+
+\begin{document}
+
+\maketitle
+
+\DefineVerbatimEnvironment%
+  {scheme}{Verbatim}
+  {numbers=left,numbersep=5pt,
+   frame=lines,framerule=.3mm,framesep=8pt,commandchars=\\\{\}}
+
+\DefineVerbatimEnvironment%
+  {interaction}{Verbatim}
+  {framesep=8pt,framerule=.1mm,,commandchars=\\\{\}}
+
+\newcommand{\fiblist}{{\tt fibs}\ }
+\newcommand{\fiblistf}[1]{{\tt (fibs-from #1)}}
+\newcommand{\scons}{{\tt s-cons}\ }
+\newcommand{\scar}{{\tt s-car}\ }
+\newcommand{\scdr}{{\tt s-cdr}\ }
+\newcommand{\sref}{{\tt s-ref}\ }
+\newcommand{\sgen}{{\tt s-generate}\ }
+\newcommand{\smap}{{\tt s-map}\ }
+\newcommand{\smerge}{{\tt s-merge}\ }
+\newcommand{\sfilt}{{\tt s-filter}\ }
+\newcommand{\sinter}{{\tt s-interleave}\ }
+\newcommand{\cons}{{\tt cons}\ }
+\newcommand{\car}{{\tt car}\ }
+\newcommand{\cdr}{{\tt cdr}\ }
+\newcommand{\lref}{{\tt list-ref}\ }
+\section{Prerequisites}
+Before reading this, you should be familiar with:
+\begin{itemize}
+\item list operations: \car, \cdr, \cons, \lref, etc.
+\item higher-order functions: map, filter, 
+\item recursion
+\end{itemize}
+Thats it! Now, we've got some work to do, so put on your sweatbands
+and read on.
+\section{Let's define ``stream''}
+A stream is a potentially infinite list. This concept may sound a
+little out there at first, but we reason about the infinite all the
+time. For example, say you ask somebody a question. You can consider
+their response a stream. You don't know how long they might talk for
+(and let's face it, some people do seem to go on forever). More
+realistically, consider the positive numbers, a set very convenient
+for us to represent as an infinite list:
+\begin{interaction}
+1 2 3 4 5 6 7 8 ...
+\end{interaction}
+That's nice, but this isn't Scheme yet. How about this:
+\begin{interaction}
+'(1 2 3 4 5 6 7 8 ...)
+\end{interaction}
+Is our job done? No, because '\ldots' has no meaning in Scheme,
+although its presence makes a world of difference to us. It implies
+that you should continue the pattern to generate more elements of the
+stream. What's the pattern? Well, we know the stream begins with a
+1. Given an element in the stream, how do we get the next one?
+\begin{scheme}
+(define (next-integer n)
+  \underline{                })
+\end{scheme}
+That's simple. We just need to add one to the number to get the next
+number. This combination of a starting element and a function to get
+from one element to the next is just one way of thinking of a
+stream. You'll soon see that this is not the most general way of
+thinking of them, but it's a very useful one nonetheless. You'll also
+see that in order to work with streams in a finite amount of computer
+memory, we'll have to employ a tactic similar to using the '\ldots' to
+represent ``the rest of the stuff''.
+
+Wait. Before we go on, there's one stone that has been left unturned
+in all of this. We said at the very beginning that a stream is {\it
+  possibly} infinite, so when is a stream ever not, and why would we
+use a stream instead of a list for that? This question will be brushed
+aside for the rest of this document, because it actually is a lot more
+complex than it may seem. In fact, the functions we'll define will
+blatantly ignore the fact that streams can be finite. Not to worry, a
+better distinction between streams and lists will be made later on,
+and we'll see just how cool and useful infinite streams can be.
+
+\section{Let's (try to) make a stream}
+
+How do you like the Fibonacci numbers? Do they form a stream? Well, we
+can start by writing them out:
+\begin{interaction}
+'(0 1 1 2 3 5 8 ...)
+\end{interaction}
+That's nice, but this isn't legal Scheme code either, although it
+certainly {\it looks} like it could be a stream. Can we figure out the
+pattern behind the '\ldots' in this case? You've most likely written a
+function that generates the $n$th Fibonacci number at some point, so
+let's do it just once more:
+\begin{scheme}
+(define (fib n)
+  (cond ((= n 1) \underline{  })
+        ((= n 2) \underline{  })
+        (else (+ (\underline{          })
+                 (\underline{          })))))
+\end{scheme}
+That gives us a way to create more and more Fibonacci numbers, so we
+must be closing in on a stream now! Let's try to create a stream of
+Fibonacci numbers, {\tt fibs}, using the function we just defined:
+\begin{scheme}
+(define fibs
+  (cons (fib 0)
+        (cons (fib 1)
+              (cons (fib 2)
+                     ...?
+\end{scheme}
+Hmm, that didn't work. When in the world can we stop writing this
+function? We ran into this very problem trying to write out the stream
+of positive integers as a list using {\tt '()}. The issue is that we
+want \fiblist to be an infinite list of the Fibonacci numbers without
+having to explicity write out every member like we had started to. No
+problem. We have a great way of dealing with this all-too-common task,
+namely, recursion! Are you in the mood for some recursion?  If so,
+read on:
+\begin{scheme}
+(define fibs
+  (cons (fib 0) fibs))...?
+\end{scheme}
+That doesn't seem to be going anywhere either. Even though we got the
+first element, {\tt (fib 0)}, if we \cons that back onto \fiblist
+(line 2), what happens?  Let's take a look:
+\begin{interaction}
+   fibs
+=> (cons (fib 0) fibs)
+=> (cons (fib 0) (cons (fib 0) fibs))
+=> (cons (fib 0) (cons (fib 0) (cons (fib 0) fibs)))
+   ...
+\end{interaction}
+We just get a bunch of {\tt (fib 0)}'s! The problem might seem
+obvious: \fiblist does not take any arguments, so why should we expect
+it to do anything different each time we expand it as we did above. In
+general, no matter how many {\tt fib}s we \cons on before the
+recursive call, we won't get what we want. Let's redefine the function
+to accept an argument $n$ and generate all Fibonacci numbers beginning
+from the $n$th onwards. This sounds like it could be helpful, so let's
+try it:
+\begin{scheme}
+(define (fibs-from n)
+  (cons (fib n)
+        (fibs-from (+ n 1))))
+\end{scheme}
+Don't pat yourself on the back just yet. Does this do what we wanted?
+Expand \fiblistf{0}:
+\begin{interaction}
+(fib-from 0)
+(cons (fib 0) (fib-from 1))
+(cons (fib 0) (cons (fib 1) (fib-from 2))
+(cons (fib 0) (cons (fib 1) (cons (fib 2) (fib-from 3))))
+   ...
+\end{interaction}
+Ok, pat yourself on the back now. This does indeed look like an
+infinite list of Fibonacci numbers. Have you tried this in a Scheme
+interpreter? If not, try it now:
+\begin{interaction}
+(fib-list 0)
+=> ...
+\end{interaction}
+In short, you're not likely to see anything except an error message
+(if you wait long enough). What our recursive definition missing that
+recursive definitions usually have? A {\bf base case}. \fiblistf{0}
+never stops expanding because there's no reason it should! We didn't
+give it cause to stop recursing, because we absolutely {\it want} it
+to be an infinite list.
+
+This should worry you. We were so close to calling the output of
+\fiblistf{n} a stream, but the barrier we just hit seems to be
+insurmountable. The good news is that it isn't. We will get to the
+magic shortly, but first, be sure to take a break or go over the
+examples again if it is unclear what a {\bf stream} is or how
+{\tt fibs-from} is like a stream, but not {\it quite}.
+
+\section{Let's pretend we have streams}
+
+\subsection{Infinite recursion}
+
+Let's recap what went wrong when we tried to define a stream for the
+Fibonacci sequence. Try to say this in your own words before reading
+on.
+
+We'd really like to say that \fiblistf{n} is {\tt (fib n)} consed onto
+\fiblistf{(+ n 1)}. This way, we can think of streams almost the same
+way we think of lists. However, this definition is {\it infinitely}
+recursive, because \fiblistf{(+ n 1)} will call \fiblistf{(+ n 2)} and
+that will, in turn, call \fiblistf{(+ n 3)}, and so on ad
+infinitum. For now, let's ignore this problem and pretend as though
+streams {\bf just work}.
+
+\subsection{Diving into streams}
+
+So, now what? What can we do with these imaginary streams? Well, as we
+just said, it would be nice if we could treat them like lists. We'd
+like to \car and \cdr them in order to pull elements out of them, for
+starters. Let's imagine \scar and \scdr functions that operate on
+streams the same way \car and \cdr do on lists, and test them on a
+couple of predefined streams. We'll call the stream of positive
+numbers {\tt ints} and the stream of Fibonacci numbers {\tt fibs}.
+
+\begin{interaction}
+\textit{;; ints first}
+(s-car ints)
+=> 1
+(s-car (s-cdr ints))
+=> 2
+(s-car (s-cdr (s-cdr ints)))
+=> 3
+\end{interaction}
+\begin{interaction}
+\textit{;; on to fibs}
+(s-car fibs)
+=> 0
+(s-car (s-cdr fibs))
+=> 0
+(s-car (s-cdr (s-cdr (s-cdr fibs))))
+=> 2
+(s-car (s-cdr (s-cdr (s-cdr (s-cdr (s-cdr fibs))))))
+=> 5
+\end{interaction}
+
+Notice that we refrained from looking at the output of {\tt (s-cdr
+  {\it stream})} directly. Don't worry about it for now. What we see
+is that we can \scdr down a stream and pull elements out with
+\scar. This is a breakthrough! Convince yourself why before
+continuing. Hint: can we now work with infinite lists? It's (finally)
+time for some real exercises. We can build up some more stream
+operators out of the two we already have. Let's start simple.
+
+\begin{enumerate}
+\item Define a function {\tt s-cadr}, which does to streams what {\tt
+    cadr} does to lists:
+\begin{scheme}
+(define (s-cadr s)
+  (\underline{      } (\underline{      } s)))
+\end{scheme}
+That was easy, right? Don't worry, there's more blanks in the next
+one.
+
+\item Define a function {\tt s-generate} that takes a stream and a
+  number $n$ and returns a {\bf list} of $n$ elements from that
+  stream. This is an extremely useful function, so let's see it in
+  action:
+\begin{interaction}
+(s-generate ints 0)
+=> ()
+(s-generate ints 10)
+=> (1 2 3 4 5 6 7 8 9 10)
+(s-generate fibs 10)
+=> (0 1 1 2 3 5 8 13 21 34)
+\end{interaction}
+\begin{scheme}
+(define (s-generate s n)
+   (if (\underline{      }) \underline{  }
+       (cons (\underline{     } s)
+             (s-generate \underline{      } \underline{      }))))
+\end{scheme}
+
+\end{enumerate}
+
+We're all set now to turn the imagined into the real.
+
+\section{Let's touch base with reality}
+
+Recall the infinite recursion that was the root of all our
+problems. What if there was a way to tell Scheme:
+\begin{quote}
+  Hold on! Don't be so eager to compute the next element in the stream
+  (i.e. the next Fibonacci number)! When I need it, I'll ask you for
+  it, but you must promise me you'll compute it when I {\it do} ask.
+\end{quote}
+If Scheme agreed to this, would we be able to define streams? Yes! To
+make this happen, let's define a new type of \cons called \scons
+\footnote{\scons is defined in {\tt streams.scm}, so be sure to load
+  the file before attempting to use it.} . This is a very special
+\cons because when we say
+\begin{interaction}
+(s-cons thing1 thing2)
+\end{interaction}
+Scheme promises that it will ignore {\tt thing2} until we ask for it,
+and no sooner. What we are essentially saying is that
+\begin{quotation}
+  Infinite recursion allows us to model an infinite stream, {\it
+    provided that} we have some way of delaying the recursion until we
+  ask for it to happen.
+\end{quotation}
+Another way to look at it is that
+\begin{quotation}
+  A list exists all at once. A stream is uncovered element by element
+  as we ask for them.
+\end{quotation}
+This might be clear as daylight or it might be very confusing. Let's
+assume it's the latter.  What does it even mean to ``ask'' Scheme for
+an element?  Let's take a shot in the dark and try to create an
+extramely simple stream, the stream of ones, and ``ask'' for its
+elements:
+\begin{scheme}
+(define ones
+  (s-cons \underline{  } \underline{     }))
+\end{scheme}
+Wow. Is that all? Does this even work? Let's try some of the
+operations we're familiar with.
+\begin{interaction}
+(s-car ones)
+=> 1
+(s-car (s-cdr ones))
+=> 1
+(s-generate ones 10)
+=> (1 1 1 1 1 1 1 1 1 1)
+\end{interaction}
+Ah, so that's what we mean by ``asking''! We ask for elements when we
+manipulate the stream to pull them out like we just did. But where did
+the infinite recursion disappear to? Did Scheme suddenly get lazy and
+take a break from our infinite antics?  Not likely. It's merely
+upholding the request we made just a minute ago and waiting until we
+ask for the rest of the stream with an \scdr before attempting to
+compute any more of it. Now, with the help of \scons, we can make our
+own streams. Our example with {\tt ones} was so simple we only used a
+single \scons, but are we restricted to using a single \scons to make
+streams? Certainly not. Let's try to come up with a useful stream that
+uses more than one of them, like the stream of alternating 0's and
+1's:
+\begin{scheme}
+(define zeroes-ones
+  (s-cons \underline{  }
+          (s-cons \underline{  }
+                  zeroes-ones)))
+\end{scheme}
+Nice, that one proves we can use \scons in any situation we use
+\cons. The same way a \cons creates a new list, \scons creates a new
+{\bf stream}.
+
+Remember our troubles with the Fibonacci sequence above? The
+last thing we tried was something like this:
+\begin{scheme}
+(define (fibs-from n)
+  (cons (fib n)
+        (fibs-from (+ n 1))))
+\end{scheme}
+That's right, we were using \cons because we didn't know any
+better. We have a better tool now: \scons. This should be easy to
+fix. How about the following:
+\begin{scheme}
+(define (fibs-from n)
+  (\underline{       } (fib n)
+        (fibs-from (+ n 1))))
+\end{scheme}
+That most definitely looks right, but how can we get the entire
+Fibonacci sequence ({\tt fibs} from before) without that pesky
+argument $n$ getting in the way? Give it a go:
+\begin{scheme}
+(define fibs \underline{                       })
+\end{scheme}
+Treat yourself to an expensive meal at your favourite restaurant. You
+just created your first {\it real} stream, so swap out your sweatbands
+for some fresh ones and read on.
+
+\subsection{Round 1: Simple Streams}
+
+Let's define a few streams from scratch, just like we did with {\tt
+  fibs} and {\tt ones}.
+\begin{enumerate}
+\item Define the stream {\tt (ints-from n)} which is the stream of all
+  integers starting from $n$ on. Then, using this stream, define a new
+  stream {\tt ints} of {\it all} positive integers (1,2,3,\ldots).
+\begin{interaction}
+(s-car (ints-from 5))
+=> 5
+(s-car (s-cdr (ints-from 5)))
+=> 6
+(s-generate (ints-from 5) 10)
+=> (5 6 7 8 9 10 11 12 13 14)
+\end{interaction}
+\begin{scheme}
+(define (ints-from n)
+  (s-cons \underline{  }
+          \underline{                  }))
+
+(define ints \underline{               })
+\end{scheme}
+\item Good so far? That couldn't have been any harder than {\tt fibs},
+  because they're nearly the same! So is this one. Define a pair of
+  streams, {\tt evens-from} and {\tt evens}, that define a stream of
+  even numbers in a similar fashion to the last problem.
+\begin{scheme}
+(define (evens-from n)
+  (s-cons \underline{  }
+          \underline{                   }))
+
+(define evens \underline{               })
+\end{scheme}
+\end{enumerate}
+Excellent. If you haven't yet worked up a sweat, move on to the next
+round. Otherwise, take a shower and call it a day.
+
+\subsection{Round 2: Simple Stream Operations}
+
+\begin{enumerate}
+\item This is a warmup that will come in handy later. Define the
+  following functions:
+  \begin{itemize}
+  \item {\tt (id n)}: returns $n$ (does nothing to input)
+  \item {\tt (double n)}: returns $2n$
+  \item {\tt (square n)}: returns $n^2$
+  \item {\tt (pow2 n)}: returns $2^n$
+  \item {\tt (multiple? m n)}: returns {\tt \#t} if $m$ is a multiple
+    of $n$, {\tt \#f} otherwise.
+  \item {\tt (even? n)}: returns {\tt \#t} if $n$ is even, {\tt \#f}.
+  \end{itemize}
+\begin{scheme}
+(define (double n)
+                                      )
+(define (square n)
+                                      )
+(define (pow2 n)
+                                      )
+(define (multiple? m n)
+
+                                      )
+\textit{;; Version 1: doesn't use multiple}
+(define (even? n)
+
+                                      )
+\textit{;; Version 2: uses} multiple
+(define (even? n)
+                                      )
+\end{scheme}
+\item We've already seen that \sgen is a rather handy function. In
+  fact, we can think of it as converting part of a stream into a
+  list. Can we think of other think of other things to do with
+  streams? How about the stream equivalent of \lref? Define away!
+\begin{interaction}
+(s-ref ints 0)     ;; \underline{\textit{0}} 1 2 3 4 5 6 7 ...
+=> 1
+(s-ref ints 4)     ;; 1 2 3 4 \underline{\textit{5}} 6 7 ...
+=> 5
+(s-ref fibs 0)     ;; \underline{\textit{0}} 1 1 2 3 5 8 ...
+=> 0
+(s-ref fibs 4)     ;; 0 1 1 2 \underline{\textit{3}} 5 8 ...
+=> 3
+\end{interaction}
+\begin{scheme}
+\textit{;; Version 1: Don't use s-generate}
+(define (s-ref s n)
+
+
+
+                                       )
+
+\textit{;; Version 2: Use {\tt s-generate} and {\tt list-ref} (mind your indices!)}
+(define (s-ref s n)
+
+
+                                       )
+\end{scheme}
+That's useful. We're starting to develop a Scheme vocabulary to reason
+with streams. There's still a whole lot more we can do with them,
+though. Recall one definition of streams which involved a {\bf
+  starting element} and a {\bf function} to generate each new element
+from previous one. This is a bit of a generalization of our usual
+pattern of making streams. Let's look once again at {\tt ints-from}
+and {\tt evens-from}:
+\begin{scheme}
+(define (ints-from n)
+  (s-cons n (ints-from (+ n 1)))
+(define (evens-from n)
+  (s-cons n (evens-from (+ n 2))))
+\end{scheme}
+Let's look again with some pieces changed:
+\begin{scheme}
+(define (\textit{stream} n)
+  (s-cons n (\textit{stream} (\textit{function} n))))
+\end{scheme}
+See the basic structure we've been using to create a stream? We take a
+number $n$ as our starting line, and apply {\it function} to any
+element to get the next element. In the first case, {\it function}
+have been {\tt add-one} and in the second it might have been {\tt
+  add-two}. Let's write a function {\tt s-make} that will {\bf create}
+a stream for us given these two parts of our definition. This is a bit
+complicated, so we'll go back to using \underline{ } temporarily.
+\begin{scheme}
+(define (s-make f n)
+  (define (stream n)
+    (\underline{        } \underline{  } (stream \underline{     })))
+  (stream \underline{  }))
+\end{scheme}
+The blanks should be straightforward to fill in, but more importantly,
+let's use this function to define some new streams, including the ones
+we just discussed. Feel free to use {\tt add-one} and {\tt
+  add-two}. You might find some of the simple functions you defined
+earlier to be useful.
+\begin{scheme}
+(define ones          (s-make \underline{          } \underline{  }))
+(define twos          (s-make \underline{          } \underline{  }))
+(define ints          (s-make \underline{          } \underline{  }))
+(define evens         (s-make \underline{          } \underline{  }))
+(define powers-of-two (s-make \underline{          } \underline{  }))
+\end{scheme}
+An important thing to notice is that you just defined {\tt ints} and
+{\tt evens} {\bf without} needing to define {\tt ints-from} and {\tt
+  evens-from}. This function lets us make some streams very
+conveniently! (Can we make {\tt fibs} with {\tt s-make}? What is the
+general pattern missing that our earlier definition of {\tt fibs-from}
+had.)
+
+\subsection{Final Round: Complex Stream Operations}
+
+\item There's yet more we can do to operate on streams. Can you think
+  of anything? Can we do something (apply a function) to every element
+  in a stream? Well, we don't know how long the stream goes on for,
+  and everything we've worked with so far is an infinite stream. How
+  in the world can we then do something to every element when there
+  are an infinite number of elements? Hmm, what about making a new
+  stream? What goes in the new stream? How about this: every element
+  in the new stream is some function of an element in the old
+  stream. That sounds like something we could possibly work with. So
+  basically, the new stream is simply ``a function away'' from the old
+  stream. Can we get an example? Ok:
+\begin{interaction}
+ones = 1,1,1,1,1,...
+twos = ones * 2 = 1*2,1*2,1*2,1*2,... = 2,2,2,2,2,...
+\end{interaction}
+That makes sense. When we say {\tt ones * 2}, we're really saying take
+every element of {\tt ones} and double it. The result is the stream of
+twos. Let's assume we have a function \smap that takes a function $f$
+and a stream of elements $(e_1,e_2,e_3,...)$ and returns a stream of
+elements $(f(e_1),f(e_2),f(e_3),...)$. That's a mouthful, but here's
+how we'd use it to do the above in Scheme:
+\begin{scheme}
+(define twos
+  (s-map double ones))
+\end{scheme}
+That's all! Looks almost too simple, so let's actually {\it write}
+\smap to see why.
+\begin{scheme}
+(define (s-map f s)
+  (s-cons \underline{              }            \textit{;; apply function to first element}
+          (s-map \underline{  } \underline{           })))  \textit{;; recurse on rest of stream}
+\end{scheme}
+Nice, we just defined another extremely useful function. You know what
+comes next.
+\item Feel free to use any of the simple functions you've already
+  defined in combination with \smap to define the following familiar
+  streams:
+\begin{scheme}
+(define twos-new
+  (s-map \underline{          } twos))
+(define threes
+  (s-map add-one \underline{          }))
+(define evens
+  (s-map \underline{          } ints))
+(define powers-of-two
+  (s-map \underline{          } \underline{          }))
+(define true-falses
+  (s-map even? \underline{          }))
+\end{scheme}
+\item We just increased our repertoire yet again with \smap, which
+  creates a new stream that's a function of another stream. What about
+  making a new stream that's a function of {\bf two} other
+  streams. Let's call it \smerge; it'll take a function $f$ and two
+  streams, $(n_1,n_2,n_3,...)$ and $(m_1,m_2,m_3,...)$, and create a
+  new stream $(f(n_1,m_1), f(n_2,m_2), f(n_3,m_3), ...)$. Once again,
+  let's see an example before actually writing the function.
+\begin{scheme}
+(define twos
+  (s-merge + ones ones))
+\end{scheme}
+\begin{interaction}
+(s-generate twos 10)
+=> (2 2 2 2 2 2 2 2 2 2)
+\end{interaction}
+Looks good, on to the definition:
+\begin{scheme}
+(define (s-merge f s1 s2)
+  (s-cons \underline{                         }     \textit{;; apply f to first element of both streams}
+    (s-merge \underline{  } \underline{         } \underline{         })))) \textit{;; recurse on rest of both streams}
+\end{scheme}
+\item Ok, you're probably bored of looking at our old friends again,
+  so let's look at them in a new light. Define {\tt ints}, {\tt odds},
+  and {\tt fibs} as merges of other streams. Feel free to use any
+  stream or function we've defined so far. {\tt ints} and {\tt fibs}
+  are slightly tricky, so don't feel bad it they take some time to
+  work out. Hint: they're both recursively defined.
+\begin{scheme}
+\textit{;; use{\tt ones} and{\tt evens}}
+(define odds
+  (s-merge
+
+                       ))
+(define ints
+  (s-cons 1
+          (s-merge
+
+                               )))
+(define fibs
+  (s-cons 0
+          (s-cons 1
+                  (s-merge
+
+                                         ))))
+\end{scheme}
+\item Let's define our last two stream operators. \sfilt takes two
+  arguments, a predicate function of one argument (like {\tt even?})
+  and a stream and returns the stream of elements that ``pass'' the
+  predicate function. That is, if the predicate function returns {\tt
+    \#t} for an element in the input stream, that element should be
+  part of the output stream.
+\begin{scheme}
+(define (s-filter f s)
+  (if
+      (s-cons
+                                                        )
+      (s-filter                                         )))
+(define evens
+  (s-filter                                             ))
+\end{scheme}
+\item This is it, our last stream operation. \sinter
+\end{enumerate}
+
+% \item Define a stream of 5 numbers (your favourite ones). Then, use
+%   \sgen to to list the elements out.  This will be our first {\it
+%     finite} stream! It will also be the first one that uses anything
+%   other than a stream as the second argument to \scons.
+% \begin{scheme}
+% (define five-nums
+%   (s-cons \underline{  }
+%     (s-cons \underline{  }
+%       (s-cons \underline{  }
+%         (s-cons \underline{  }
+%           (s-cons \underline{  } '())))))) ;; hey, it's an empty list!
+% \end{scheme}
+% \begin{interaction}
+% (s-generate \underline{         } \underline{  })
+% => \underline{                     }
+% \end{interaction}
+% You might be wondering why it is we can just stick a list in where
+% we've usually stuck a stream. The reason is that \scons isn't too
+% particular about what its arguments are so long as \scar and \scdr
+% know how to deal with them.
+
+\end{document}
